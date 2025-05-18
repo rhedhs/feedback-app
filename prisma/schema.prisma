@@ -10,6 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String     @id @default(uuid())
+  name          String?
+  email         String     @unique
+  password      String
+  image         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  feedbacks     Feedback[]
+  sharedWith    SharedFeedback[] @relation("SharedWith")
+  sharedBy      SharedFeedback[] @relation("SharedBy")
+}
+
 model Feedback {
   id          String   @id @default(uuid())
   title       String
@@ -18,7 +31,25 @@ model Feedback {
   type        String
   severity    String   @default("medium")
   screenshot  String?  // base64 encoded image
+  drawing     String?  // JSON string of drawing data
   createdAt   DateTime @default(now())
-  userId      String?  // Optional if auth is used
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
   sessionId   String   // Track feedback by session
+  sharedWith  SharedFeedback[]
+}
+
+model SharedFeedback {
+  id          String   @id @default(uuid())
+  feedback    Feedback @relation(fields: [feedbackId], references: [id])
+  feedbackId  String
+  sharedBy    User     @relation("SharedBy", fields: [sharedById], references: [id])
+  sharedById  String
+  sharedWith  User     @relation("SharedWith", fields: [sharedWithId], references: [id])
+  sharedWithId String
+  createdAt   DateTime @default(now())
+  canEdit     Boolean  @default(false)
+
+  @@unique([feedbackId, sharedWithId])
 }

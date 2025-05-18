@@ -1,112 +1,137 @@
-"use client";
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// components/feedback/FeedbackList.tsx
+import { Feedback } from "@/types/feedback";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatDistanceToNow } from 'date-fns';
-import { Bug, Lightbulb, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Feedback } from '@/types/feedback';
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface FeedbackListProps {
   items: Feedback[];
   onItemClick: (item: Feedback) => void;
   onGenerateReport: () => void;
+  isLoading?: boolean;
 }
 
-// Map feedback types to icons
-const typeIcons: Record<string, React.ReactNode> = {
-  bug: <Bug className="h-4 w-4" />,
-  suggestion: <Lightbulb className="h-4 w-4" />,
-  content: <FileText className="h-4 w-4" />,
-  improvement: <CheckCircle2 className="h-4 w-4" />,
-  other: <AlertTriangle className="h-4 w-4" />
-};
+export default function FeedbackList({
+  items,
+  onItemClick,
+  onGenerateReport,
+  isLoading = false,
+}: FeedbackListProps) {
+  // Helper to format date strings
+  const formatDate = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  };
 
-// Map severity to colors
-const severityColors: Record<string, string> = {
-  low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-  critical: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-};
-
-export default function FeedbackList({ items, onItemClick, onGenerateReport }: FeedbackListProps) {
-  const [feedbackItems, setFeedbackItems] = useState<Feedback[]>(items);
-
-  useEffect(() => {
-    setFeedbackItems(items);
-  }, [items]);
-
-  if (feedbackItems.length === 0) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-semibold mb-2">Feedback</h2>
-          <p className="text-sm text-muted-foreground">No feedback items yet.</p>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="text-center space-y-3">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium">No feedback yet</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              Click the "Add Feedback" button to report an issue or suggest an improvement.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Helper to get severity badge color
+  const getSeverityColor = (severity: string) => {
+    switch (severity.toLowerCase()) {
+      case "high":
+        return "destructive";
+      case "medium":
+        return "warning";
+      case "low":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Feedback ({feedbackItems.length})</h2>
-        <Button onClick={onGenerateReport} variant="outline" size="sm">
+    <Card className="h-full flex flex-col">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold">Feedback Items</CardTitle>
+        <CardDescription>
+          Click on an item to navigate to the page
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="flex-grow overflow-hidden p-0">
+        <ScrollArea className="h-full px-4">
+          {isLoading ? (
+            // Loading state
+            Array(3)
+              .fill(0)
+              .map((_, i) => (
+                <Card
+                  key={`skeleton-${i}`}
+                  className="mb-4 cursor-pointer"
+                >
+                  <CardHeader className="p-4 pb-0">
+                    <Skeleton className="h-6 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <Skeleton className="h-16 w-full" />
+                  </CardContent>
+                  <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-32" />
+                  </CardFooter>
+                </Card>
+              ))
+          ) : items.length > 0 ? (
+            // Feedback items
+            items.map((item) => (
+              <Card
+                key={item.id}
+                className="mb-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => onItemClick(item)}
+              >
+                <CardHeader className="p-4 pb-0">
+                  <CardTitle className="text-lg">{item.title}</CardTitle>
+                  <CardDescription className="truncate">
+                    {item.path}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <p className="text-sm line-clamp-3">{item.description}</p>
+                </CardContent>
+                <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                  <Badge variant={getSeverityColor(item.severity)}>
+                    {item.severity.toUpperCase()}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(item.createdAt)}
+                  </span>
+                </CardFooter>
+              </Card>
+            ))
+          ) : (
+            // Empty state
+            <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+              <p className="text-muted-foreground mb-2">
+                No feedback items yet
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Click the "+" button to add feedback
+              </p>
+            </div>
+          )}
+        </ScrollArea>
+      </CardContent>
+
+      <CardFooter className="border-t bg-card">
+        <Button
+          onClick={onGenerateReport}
+          className="w-full"
+          disabled={items.length === 0 || isLoading}
+        >
           Generate Report
         </Button>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
-          {feedbackItems.map((item) => (
-            <Card 
-              key={item.id} 
-              className="cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => onItemClick(item)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex justify-between">
-                  <CardTitle className="text-base">{item.title}</CardTitle>
-                  <Badge 
-                    variant="outline"
-                    className={severityColors[item.severity]}
-                  >
-                    {item.severity}
-                  </Badge>
-                </div>
-                <CardDescription className="truncate text-xs">
-                  {item.path}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <p className="text-sm line-clamp-2">{item.description}</p>
-              </CardContent>
-              <CardFooter className="flex justify-between pt-0">
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <span className="mr-2 flex items-center">
-                    {typeIcons[item.type] || typeIcons.other}
-                    <span className="ml-1 capitalize">{item.type}</span>
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                </span>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

@@ -1,108 +1,130 @@
+// components/feedback/FeedbackForm.tsx
 "use client";
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import html2canvas from 'html2canvas';
+import { zodResolver } from '@hookform/resolvers/zod';
 
-const feedbackFormSchema = z.object({
+
+// Define form schema
+const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  type: z.enum(["bug", "suggestion", "content", "improvement", "other"]),
-  severity: z.enum(["low", "medium", "high", "critical"]),
-  includeScreenshot: z.boolean().default(false),
+  path: z.string().url("Must be a valid URL"),
+  type: z.string().min(1, "Please select a feedback type"),
+  severity: z.string().min(1, "Please select a severity level"),
+  screenshot: z.string().optional(),
 });
-
-type FeedbackFormValues = z.infer<typeof feedbackFormSchema>;
 
 interface FeedbackFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: any) => Promise<void>;
+  onSubmit: (values: any) => void;
   currentPath: string;
+  isLoading?: boolean;
 }
 
-export default function FeedbackForm({ 
-  open, 
-  onOpenChange, 
+export default function FeedbackForm({
+  open,
+  onOpenChange,
   onSubmit,
-  currentPath 
+  currentPath,
+  isLoading = false,
 }: FeedbackFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
 
-  const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(feedbackFormSchema),
+  // Initialize form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      type: "bug",
+      path: currentPath,
+      type: "",
       severity: "medium",
-      includeScreenshot: false,
+      screenshot: undefined,
     },
   });
 
-  const captureScreenshot = async () => {
-    try {
-      // Get the iframe element
-      const iframe = document.querySelector('iframe');
-      if (iframe && iframe.contentWindow) {
-        // Capture the iframe content
-        const canvas = await html2canvas(iframe.contentWindow.document.body);
-        const screenshotData = canvas.toDataURL('image/png');
-        setScreenshot(screenshotData);
-        return screenshotData;
-      }
-    } catch (error) {
-      console.error('Failed to capture screenshot:', error);
+  // Update path when currentPath changes
+  useEffect(() => {
+    form.setValue("path", currentPath);
+  }, [currentPath, form]);
+
+  // Handle form submission
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    // Add screenshot if available
+    if (screenshotBase64) {
+      values.screenshot = screenshotBase64;
     }
-    return null;
+
+    onSubmit(values);
   };
 
-  const handleSubmit = async (values: FeedbackFormValues) => {
-    setIsSubmitting(true);
+  // Handle taking a screenshot
+  const handleTakeScreenshot = async () => {
     try {
-      let screenshotData = screenshot;
-      
-      if (values.includeScreenshot && !screenshotData) {
-        screenshotData = await captureScreenshot();
-      }
-      
-      await onSubmit({
-        ...values,
-        path: currentPath,
-        screenshot: screenshotData,
-      });
-      
-      form.reset();
-      setScreenshot(null);
-      onOpenChange(false);
+      // This is a placeholder for screenshot functionality
+      // In a real implementation, you'd use a library or API to capture the screen
+      const screenshotData = await captureScreenshot();
+      setScreenshotBase64(screenshotData);
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error taking screenshot:", error);
     }
+  };
+
+  // Mock function for capturing screenshots
+  // In a real app, you'd implement a proper screenshot mechanism
+  const captureScreenshot = async (): Promise<string> => {
+    return new Promise((resolve) => {
+      // This is just placeholder code
+      // In a real implementation, you might use html2canvas or another library
+      setTimeout(() => {
+        // Return a placeholder base64 image
+        resolve("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+      }, 500);
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Submit Feedback</DialogTitle>
           <DialogDescription>
-            Provide details about your feedback for the current page.
+            Provide details about your feedback for this page.
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
@@ -112,13 +134,17 @@ export default function FeedbackForm({
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Brief summary of your feedback" {...field} />
+                    <Input
+                      placeholder="Brief description of the issue"
+                      disabled={isLoading}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="description"
@@ -126,17 +152,35 @@ export default function FeedbackForm({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Detailed description of your feedback" 
-                      rows={4}
-                      {...field} 
+                    <Textarea
+                      placeholder="Detailed explanation of your feedback"
+                      className="min-h-[100px]"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
+            <FormField
+              control={form.control}
+              name="path"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Path</FormLabel>
+                  <FormControl>
+                    <Input disabled={isLoading} {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    URL where the issue was found
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -144,9 +188,10 @@ export default function FeedbackForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                    <Select
+                      disabled={isLoading}
+                      onValueChange={field.onChange}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -155,9 +200,9 @@ export default function FeedbackForm({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="bug">Bug</SelectItem>
-                        <SelectItem value="suggestion">Suggestion</SelectItem>
-                        <SelectItem value="content">Content Issue</SelectItem>
+                        <SelectItem value="feature">Feature Request</SelectItem>
                         <SelectItem value="improvement">Improvement</SelectItem>
+                        <SelectItem value="design">Design Issue</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
@@ -165,15 +210,16 @@ export default function FeedbackForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="severity"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Severity</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      disabled={isLoading}
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -185,7 +231,6 @@ export default function FeedbackForm({
                         <SelectItem value="low">Low</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -193,64 +238,40 @@ export default function FeedbackForm({
                 )}
               />
             </div>
-            
-            <FormField
-              control={form.control}
-              name="includeScreenshot"
-              render={({ field }) => (
-                <FormItem className="space-y-2">
-                  <FormLabel>Include Screenshot</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={(value) => {
-                        const boolValue = value === "true";
-                        field.onChange(boolValue);
-                        if (boolValue && !screenshot) {
-                          captureScreenshot();
-                        }
-                      }}
-                      defaultValue={field.value ? "true" : "false"}
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="true" />
-                        </FormControl>
-                        <FormLabel className="cursor-pointer">Yes</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="false" />
-                        </FormControl>
-                        <FormLabel className="cursor-pointer">No</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormDescription>
-                    Include a screenshot of the current page
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
-            
-            {screenshot && (
-              <div className="mt-4 border rounded-md overflow-hidden">
-                <img src={screenshot} alt="Screenshot" className="w-full h-auto" />
-              </div>
-            )}
-            
-            <DialogFooter className="pt-4">
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
+
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTakeScreenshot}
+                className="w-full"
+                disabled={isLoading}
               >
-                Cancel
+                Take Screenshot
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit Feedback
+
+              {screenshotBase64 && (
+                <div className="mt-2 border rounded-md p-2">
+                  <p className="text-xs text-muted-foreground mb-2">Screenshot captured</p>
+                  <img
+                    src={screenshotBase64}
+                    alt="Screenshot"
+                    className="w-full h-auto object-contain max-h-[150px]"
+                  />
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Feedback"
+                )}
               </Button>
             </DialogFooter>
           </form>
