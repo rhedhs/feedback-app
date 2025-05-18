@@ -1,0 +1,24 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Feedback {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  path        String
+  type        String
+  severity    String   @default("medium")
+  screenshot  String?  // base64 encoded image
+  createdAt   DateTime @default(now())
+  userId      String?  // Optional if auth is used
+  sessionId   String   // Track feedback by session
+}
